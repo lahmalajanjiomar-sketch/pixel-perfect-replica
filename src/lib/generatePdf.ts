@@ -62,7 +62,7 @@ export async function generatePdf(student: Student, options: JacketOptions, patc
   doc.setFont("helvetica", "normal").setFontSize(11);
   for (const s of PATCH_SLOTS) {
     y += 18;
-    doc.text(`${patches[s.id] ? "[x]" : "[ ]"}  ${s.label}${patches[s.id] ? ` — ${patches[s.id].name}` : " — empty"}`, m, y);
+    doc.text(`${patches[s.id] ? "[x]" : "[ ]"}  ${s.label}${patches[s.id] ? ` — ${patches[s.id]!.name}` : " — empty"}`, m, y);
   }
 
   for (const s of PATCH_SLOTS) {

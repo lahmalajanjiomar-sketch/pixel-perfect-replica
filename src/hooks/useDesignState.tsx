@@ -25,7 +25,7 @@ export const BODY_COLORS = ["#1f2a5c", "#7a1f2b", "#14532d", "#111111", "#4b2e83
 export const SLEEVE_COLORS = ["#f4efe2", "#d4a72c", "#9ca3af", "#111111", "#7a1f2b", "#1f2a5c"];
 
 export function DesignProvider({ children }: { children: ReactNode }) {
-  const [options, setOptions] = useState<JacketOptions>({ bodyColor: BODY_COLORS[0], sleeveColor: SLEEVE_COLORS[0], text: "CLASS OF 2027" });
+  const [options, setOptions] = useState<JacketOptions>({ bodyColor: BODY_COLORS[0]!, sleeveColor: SLEEVE_COLORS[0]!, text: "CLASS OF 2027" });
   const [patches, setPatches] = useState<Record<string, Patch>>({});
   const [selectedSlot, selectSlot] = useState<string | null>(null);
   const [hoveredSlot, hoverSlot] = useState<string | null>(null);
