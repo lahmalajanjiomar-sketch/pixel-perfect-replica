@@ -3,22 +3,26 @@ import * as THREE from "three";
 import { Edges } from "@react-three/drei";
 import type { PatchSlotConfig } from "@/config/patchSlots";
 import { useDesignState } from "@/hooks/useDesignState";
+import { isLocked } from "@/lib/patchRules";
 
 export function PatchSlot({ slot }: { slot: PatchSlotConfig }) {
-  const { patches, selectedSlot, hoveredSlot, selectSlot, hoverSlot } = useDesignState();
+  const { patches, order, selectedSlot, hoveredSlot, selectSlot, hoverSlot } = useDesignState();
+  const locked = isLocked(slot, order.patch4Unlocked);
   const patch = patches[slot.id];
   const [tex, setTex] = useState<THREE.Texture | null>(null);
 
   useEffect(() => {
-    if (!patch) { setTex(null); return; }
+    if (!patch || locked) { setTex(null); return; }
+    let live = true;
     let t: THREE.Texture | null = null;
     new THREE.TextureLoader().load(patch.url, (loaded) => {
       loaded.colorSpace = THREE.SRGBColorSpace;
+      if (!live) { loaded.dispose(); return; }
       t = loaded;
       setTex(loaded);
     });
-    return () => { t?.dispose(); };
-  }, [patch]);
+    return () => { live = false; t?.dispose(); };
+  }, [patch, locked]);
 
   const active = selectedSlot === slot.id;
   const hovered = hoveredSlot === slot.id;

@@ -1,0 +1,23 @@
+import { describe, expect, it } from "vitest";
+import { PATCHES, NAME_MAX_LENGTH, QUOTE_MAX_LENGTH } from "@/config/patches";
+import { countPatches, displayDigits, isFilled, sanitizeText, validateImage, validateOrder, type Order, type PatchValue } from "@/lib/patchRules";
+import { checkPaymentStatus } from "@/api/orders";
+const order:Order={size:"S",fullName:"Student",grade:"12A",notes:"",num:"01",patch4Unlocked:false};
+const file=new File(["image"],"patch.webp",{type:"image/webp"});
+const complete:Record<string,PatchValue>={initials:{text:"AB"},name:{text:"عمر"},quote:{text:"Class of 27"},country:{countryCode:"TR"},number:{text:"00"},"patch-1":{file},"patch-2":{file},"patch-3":{file}};
+describe("Numbered patch rules",()=>{
+ it("includes exactly patches 1 through 11",()=>expect(PATCHES.map(p=>p.number)).toEqual([1,2,3,4,5,6,7,8,9,10,11]));
+ it("always counts both fixed noneditable patches",()=>{expect(countPatches({},false)).toBe(2);expect(PATCHES.slice(0,2).every(p=>!p.editable)).toBe(true);});
+ it("allows exactly two uppercase A–Z initials",()=>{expect(sanitizeText("initials","a1بb!c")).toBe("AB");const p=PATCHES.find(p=>p.number===3);if(!p)throw Error();expect(isFilled(p,{text:"A"},false)).toBe(false);expect(isFilled(p,{text:"AB"},false)).toBe(true);});
+ it("limits bilingual names to the configurable default 12",()=>{expect(NAME_MAX_LENGTH).toBe(12);expect(sanitizeText("name","عمرABCDEFGHIJKLM").length).toBe(12);});
+ it("limits bilingual quotes to the configurable default 40",()=>{expect(QUOTE_MAX_LENGTH).toBe(40);expect(sanitizeText("quote","ع".repeat(45))).toHaveLength(40);});
+ it("preserves 00 and restricts numbers to 1–2 digits",()=>{expect(sanitizeText("number","00")).toBe("00");expect(sanitizeText("number","٢٧x8")).toBe("27");const p=PATCHES.find(p=>p.number===7);if(!p)throw Error();expect(isFilled(p,{text:"100"},false)).toBe(false);expect(isFilled(p,{text:"9"},false)).toBe(true);});
+ it("toggles English and Arabic display without changing value",()=>{expect(displayDigits("27",true)).toBe("٢٧");expect(displayDigits("27",false)).toBe("27");});
+ it("accepts PNG JPG WEBP at 10MB and rejects larger or other formats",()=>{for(const type of ["image/png","image/jpeg","image/webp"])expect(validateImage({type,size:10*1024*1024})).toBeNull();expect(validateImage({type:"image/png",size:10*1024*1024+1})).not.toBeNull();expect(validateImage({type:"image/gif",size:1})).not.toBeNull();});
+ it("requires exactly S M or L",()=>{for(const size of ["S","M","L"] as const)expect(validateOrder({...order,size},complete)["size"]).toBeUndefined();expect(validateOrder({...order,size:"XL" as Order["size"]},complete)["size"]).toBeDefined();});
+ it("requires order name and grade but not notes",()=>{expect(validateOrder({...order,fullName:"",grade:""},complete)).toHaveProperty("fullName");expect(validateOrder({...order,grade:""},complete)).toHaveProperty("grade");expect(validateOrder(order,complete)).toEqual({});});
+ it("requires every patch 3–10 individually",()=>{for(const p of PATCHES.filter(p=>p.number>=3&&p.number<=10)){const values={...complete};delete values[p.id];expect(validateOrder(order,values)[p.id]).toBeDefined();}});
+ it("keeps patch 11 optional even when unlocked and excludes it when locked",()=>{expect(validateOrder({...order,patch4Unlocked:true},complete)).toEqual({});const values={...complete,"patch-4":{file}};expect(countPatches(values,false)).toBe(10);expect(countPatches(values,true)).toBe(11);});
+ it("accepts either country code or uploaded flag",()=>{expect(validateOrder(order,{...complete,country:{file}})).toEqual({});});
+ it("mock payment defaults to false",async()=>expect(await checkPaymentStatus()).toBe(false));
+});
