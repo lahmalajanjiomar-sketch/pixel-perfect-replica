@@ -20,7 +20,7 @@ function CaptureRig({ controls }: { controls: React.RefObject<OC | null> }) {
       c.enabled = false;
       scene.background = new THREE.Color("#ffffff");
       const view = (back: boolean) => {
-        camera.position.set(0, 0.4, back ? -5 : 5); c.target.set(0, 0.1, 0); camera.lookAt(c.target); c.update();
+        camera.position.set(0, -0.25, back ? -7 : 7); c.target.set(0, -0.75, 0); camera.lookAt(c.target); c.update();
         gl.render(scene, camera); return gl.domElement.toDataURL("image/png");
       };
       try { return { front: view(false), back: view(true) }; }
@@ -59,7 +59,7 @@ export default function JacketScene() {
   return (
     <div className="relative h-full w-full" data-scene-ready={ready ? "" : undefined}>
       {!ready && <div className="absolute inset-0 grid place-items-center text-sm text-muted-foreground">Loading jacket…</div>}
-      <Canvas gl={{ preserveDrawingBuffer: true }} camera={{ position: [0, 0.4, 5], fov: 38 }} dpr={[1, 2]} onCreated={() => setReady(true)} onPointerMissed={() => selectSlot(null)} aria-label="3D jacket preview">
+      <Canvas gl={{ preserveDrawingBuffer: true }} camera={{ position: [0, -0.25, 7], fov: 38 }} dpr={[1, 2]} onCreated={() => setReady(true)} onPointerMissed={() => selectSlot(null)} aria-label="3D jacket and pants preview">
         <ambientLight intensity={0.5} />
         <directionalLight position={[3, 5, 4]} intensity={1.6} />
         <directionalLight position={[-4, 2, -4]} intensity={0.8} />
@@ -68,8 +68,8 @@ export default function JacketScene() {
           <Lightformer intensity={1} color="#ffe9c4" position={[-5, 1, -1]} rotation-y={Math.PI / 2} scale={[20, 1, 1]} />
         </Environment>
         <JacketModel />
-        <ContactShadows position={[0, -1.05, 0]} opacity={0.4} scale={6} blur={2.5} />
-        <OrbitControls ref={controls} enablePan={false} minDistance={3.2} maxDistance={7} minPolarAngle={Math.PI / 3} maxPolarAngle={Math.PI / 1.9} />
+        <ContactShadows position={[0, -2.95, 0]} opacity={0.4} scale={4} blur={2.5} />
+        <OrbitControls ref={controls} target={[0, -0.75, 0]} enablePan={false} minDistance={5.5} maxDistance={9} minPolarAngle={Math.PI / 3} maxPolarAngle={Math.PI / 1.9} />
         <CameraRig controls={controls} />
         <CaptureRig controls={controls} />
       </Canvas>

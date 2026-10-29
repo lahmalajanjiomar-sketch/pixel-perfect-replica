@@ -23,18 +23,18 @@ export async function generatePdf(order:Order, options:{bodyColor:string;sleeveC
  const doc=new jsPDF({unit:"pt",format:"letter"});const W=612,H=792,m=28;
  doc.setFont("helvetica","bold").setFontSize(20).text("SENIOR JACKET ORDER",m,42);
  const addFit=async(source:File|string,x:number,y:number,w:number,h:number)=>{const img=await normalizeImage(source);const scale=Math.min(w/img.width,h/img.height);const iw=img.width*scale,ih=img.height*scale;doc.addImage(img.dataUrl,"PNG",x+(w-iw)/2,y+(h-ih)/2,iw,ih);};
- const leftW=246,rightX=296,tileW=90,tileH=98;
- await addFit(views.front,m,68,leftW,270); await addFit(views.back,m,350,leftW,270);
- doc.setFontSize(10).text("FRONT",m+100,340).text("BACK",m+102,626);
+ const leftW=246,rightX=296,tileW=128,tileH=76;
+ await addFit(views.front,m,68,leftW,292); await addFit(views.back,m,372,leftW,292);
+ doc.setFontSize(10).text("FRONT",m+100,365).text("BACK",m+102,669);
  for(let i=0;i<PATCHES.length;i++){
-  const p=PATCHES[i];if(!p)continue;const x=rightX+(i%3)*tileW,y=68+Math.floor(i/3)*tileH;
-  doc.setDrawColor(190).rect(x,y,tileW-5,tileH-5);doc.setFontSize(10).text(String(p.number),x+5,y+13);
-  const patch=patches[p.id];if(patch&&!isLocked(p,order.patch4Unlocked))await addFit(patch.file??patch.url,x+7,y+18,tileW-19,55);
-  doc.setFontSize(7).text(p.label,x+5,y+82);
-  if(isLocked(p,order.patch4Unlocked))doc.text("LOCKED",x+20,y+47);
+  const p=PATCHES[i];if(!p)continue;const x=rightX+(i%2)*tileW,y=68+Math.floor(i/2)*tileH;
+  doc.setDrawColor(190).setFillColor(232,232,232).roundedRect(x,y,tileW-6,tileH-5,7,7,"FD");doc.setFontSize(9).text(String(p.number).padStart(2,"0"),x+5,y+11);
+  const patch=patches[p.id];if(patch&&!isLocked(p,order.patch4Unlocked))await addFit(patch.file??patch.url,x+22,y+5,tileW-34,48);
+  doc.setFontSize(7).text(p.label,x+5,y+65);
+  if(isLocked(p,order.patch4Unlocked))doc.text("LOCKED",x+34,y+37);
  }
- const details=[`NUM: ${order.num}`,`SIZE: ${order.size}`,`NAME: ${order.fullName}`,`PATCH NUM: ${countPatches(values,order.patch4Unlocked)}`,`GRADE: ${order.grade}`];
- let y=478;for(const detail of details){doc.addImage(await textImage(detail),"PNG",rightX,y,265,22);y+=29;}
+ const details=[`NUM : ${order.num}`,`SIZE : ${order.size}`,`NAME : ${order.fullName}`,`PATCH NUM : ${countPatches(values,order.patch4Unlocked)}`,`GRADE : ${order.grade}`];
+ let y=524;for(const detail of details){doc.addImage(await textImage(detail),"PNG",rightX,y,265,22);y+=25;}
  const notes=order.notes||"—";const noteLines=Array.from(notes.matchAll(/[^\n]{1,32}|\n/g)).map(m=>m[0]);
  const visibleNotes=noteLines.slice(0,4);for(const [i,line]of visibleNotes.entries()){doc.addImage(await textImage(`${i===0?"NOTE: ":""}${line}`),"PNG",rightX,y,265,22);y+=23;}
  doc.setFontSize(9).text(`Body: ${options.bodyColor}   Sleeves: ${options.sleeveColor}`,m,H-35);

@@ -5,7 +5,7 @@ import { PATCH_SLOTS } from "@/config/patchSlots";
 import { useDesignState } from "@/hooks/useDesignState";
 import { PatchSlot } from "./PatchSlot";
 
-/** Placeholder varsity jacket built from primitives. Swap for a .glb later — keep slot positions in patchSlots.ts in sync. */
+/** Varsity jacket and matching pants built from primitives. Patch positions live in patches.ts. */
 export function JacketModel() {
   const { options } = useDesignState();
 
@@ -49,6 +49,14 @@ export function JacketModel() {
         <group key={s} position={[s * 1.0, 0.15, 0]}>
           <mesh rotation={[0, 0, s * 0.06]} castShadow><cylinderGeometry args={[0.2, 0.18, 1.7, 24]} />{sleeve}</mesh>
           <mesh position={[0, -0.88, 0]}><cylinderGeometry args={[0.19, 0.19, 0.14, 24]} />{rib}</mesh>
+        </group>
+      ))}
+      {/* Matching tapered pant legs keep the lower-body patches on the garment. */}
+      <mesh position={[0, -1.18, 0]} castShadow><RoundedBox args={[1.02, 0.22, 0.52]} radius={0.08} smoothness={3}>{body}</RoundedBox></mesh>
+      {[-1, 1].map((s) => (
+        <group key={`pant-${s}`} position={[s * 0.31, -2.02, 0]}>
+          <mesh castShadow><cylinderGeometry args={[0.34, 0.22, 1.7, 32]} />{body}</mesh>
+          <mesh position={[0, -0.86, 0]}><cylinderGeometry args={[0.23, 0.23, 0.16, 24]} />{rib}</mesh>
         </group>
       ))}
       {/* back text */}

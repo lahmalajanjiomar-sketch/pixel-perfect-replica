@@ -20,8 +20,8 @@ interface DesignState {
  registerCapture: (fn: (() => Promise<{front: string; back: string}>) | null) => void;
 }
 const Ctx = createContext<DesignState | null>(null);
-export const BODY_COLORS = ["#1f2a5c", "#7a1f2b", "#14532d", "#111111", "#4b2e83", "#c2410c"];
-export const SLEEVE_COLORS = ["#f4efe2", "#d4a72c", "#9ca3af", "#111111", "#7a1f2b", "#1f2a5c"];
+export const BODY_COLORS = ["#111111", "#1f2a5c", "#7a1f2b", "#14532d", "#4b2e83", "#c2410c"];
+export const SLEEVE_COLORS = ["#333333", "#f4efe2", "#d4a72c", "#9ca3af", "#111111", "#7a1f2b"];
 export function DesignProvider({ children }: { children: ReactNode }) {
  const [options, setOptions] = useState<JacketOptions>({bodyColor: BODY_COLORS[0] ?? "", sleeveColor: SLEEVE_COLORS[0] ?? "", text: ""});
  const [order, setOrder] = useState<Order>({size:"", fullName:"", grade:"", notes:"", num:"", patch4Unlocked:false});
