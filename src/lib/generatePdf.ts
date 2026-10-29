@@ -1,80 +1,47 @@
 import { jsPDF } from "jspdf";
-import { PATCH_SLOTS } from "@/config/patchSlots";
-import type { JacketOptions, Student } from "@/hooks/useDesignState";
-
-export const ACCEPTED_TYPES = ["image/png", "image/jpeg"];
-export const MAX_BYTES = 10 * 1024 * 1024;
-
-export function validateImage(file: File): string | null {
-  if (!ACCEPTED_TYPES.includes(file.type)) return "Please choose a PNG or JPG image.";
-  if (file.size > MAX_BYTES) return "That image is over 10MB. Please pick a smaller one.";
-  return null;
+import { PATCHES, TEXT_PATCH_STYLE } from "@/config/patches";
+import { countPatches, isLocked, type Order, type PatchValue } from "./patchRules";
+export { validateImage, ACCEPTED_TYPES, MAX_BYTES } from "./patchRules";
+export async function normalizeImage(source: File | string): Promise<{dataUrl:string;width:number;height:number}> {
+ const image = new Image(); let url = typeof source === "string" ? source : URL.createObjectURL(source);
+ try {
+  await new Promise<void>((resolve,reject)=>{image.onload=()=>resolve();image.onerror=()=>reject(new Error("Image could not be opened"));image.src=url;});
+  const c=document.createElement("canvas");c.width=image.naturalWidth;c.height=image.naturalHeight;
+  const ctx=c.getContext("2d");if(!ctx)throw new Error("Image rendering unavailable");
+  ctx.fillStyle="#ffffff";ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(image,0,0);
+  return {dataUrl:c.toDataURL("image/png"),width:c.width,height:c.height};
+ } finally {if(typeof source!=="string") URL.revokeObjectURL(url);}
 }
-
-/** Resize to max 1600px and flatten transparency onto white. */
-export async function normalizeImage(file: File, max = 1600): Promise<{ dataUrl: string; width: number; height: number }> {
-  const bmp = await createImageBitmap(file);
-  const scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
-  const width = Math.round(bmp.width * scale);
-  const height = Math.round(bmp.height * scale);
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d")!;
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, width, height);
-  ctx.drawImage(bmp, 0, 0, width, height);
-  bmp.close();
-  return { dataUrl: canvas.toDataURL("image/jpeg", 0.9), width, height };
+async function textImage(text:string,width=1500,height=110):Promise<string>{
+ await document.fonts.load(`600 70px ${TEXT_PATCH_STYLE.font}`);
+ const c=document.createElement("canvas");c.width=width;c.height=height;const ctx=c.getContext("2d");if(!ctx)throw new Error("Text rendering unavailable");
+ ctx.fillStyle="#ffffff";ctx.fillRect(0,0,width,height);ctx.fillStyle="#111111";ctx.font=`600 60px ${TEXT_PATCH_STYLE.font}`;ctx.textBaseline="middle";
+ ctx.direction=/[\u0600-\u06ff]/.test(text)?"rtl":"ltr";ctx.textAlign=ctx.direction==="rtl"?"right":"left";
+ ctx.fillText(text,ctx.direction==="rtl"?width-10:10,height/2,width-20);return c.toDataURL("image/png");
 }
-
-export async function generatePdf(student: Student, options: JacketOptions, patches: Record<string, File>): Promise<Blob> {
-  const doc = new jsPDF({ unit: "pt", format: "letter" });
-  const W = doc.internal.pageSize.getWidth();
-  const H = doc.internal.pageSize.getHeight();
-  const m = 48;
-  let y = m;
-
-  doc.setFont("helvetica", "bold").setFontSize(22).text("Senior Jacket Design", m, y + 10);
-  y += 44;
-  doc.setFontSize(13).text("Student", m, y);
-  doc.setFont("helvetica", "normal").setFontSize(11);
-  for (const [k, v] of [["Name", student.fullName], ["Email", student.email], ["Class year", student.classYear], ["Notes", student.notes || "—"]]) {
-    y += 18;
-    const lines = doc.splitTextToSize(`${k}: ${v}`, W - m * 2);
-    doc.text(lines, m, y);
-    y += (lines.length - 1) * 14;
-  }
-  y += 30;
-  doc.setFont("helvetica", "bold").setFontSize(13).text("Jacket", m, y);
-  doc.setFont("helvetica", "normal").setFontSize(11);
-  const swatch = (label: string, hex: string) => {
-    y += 20;
-    doc.setFillColor(hex).rect(m, y - 10, 12, 12, "F");
-    doc.text(`${label}: ${hex}`, m + 20, y);
-  };
-  swatch("Body color", options.bodyColor);
-  swatch("Sleeve color", options.sleeveColor);
-  y += 18;
-  doc.text(`Text: ${options.text || "—"}`, m, y);
-  y += 30;
-  doc.setFont("helvetica", "bold").setFontSize(13).text("Patches", m, y);
-  doc.setFont("helvetica", "normal").setFontSize(11);
-  for (const s of PATCH_SLOTS) {
-    y += 18;
-    doc.text(`${patches[s.id] ? "[x]" : "[ ]"}  ${s.label}${patches[s.id] ? ` — ${patches[s.id]!.name}` : " — empty"}`, m, y);
-  }
-
-  for (const s of PATCH_SLOTS) {
-    const f = patches[s.id];
-    if (!f) continue;
-    doc.addPage();
-    doc.setFont("helvetica", "bold").setFontSize(18).text(s.label, m, m + 10);
-    const img = await normalizeImage(f);
-    const maxW = W - m * 2, maxH = H - m * 2 - 40;
-    const sc = Math.min(maxW / img.width, maxH / img.height);
-    const w = img.width * sc, h = img.height * sc;
-    doc.addImage(img.dataUrl, "JPEG", (W - w) / 2, m + 40, w, h);
-  }
-  return doc.output("blob");
+export async function generatePdf(order:Order, options:{bodyColor:string;sleeveColor:string}, values:Record<string,PatchValue>, patches:Record<string,{url:string;file?:File}>, views:{front:string;back:string}):Promise<Blob>{
+ const doc=new jsPDF({unit:"pt",format:"letter"});const W=612,H=792,m=28;
+ doc.setFont("helvetica","bold").setFontSize(20).text("SENIOR JACKET ORDER",m,42);
+ const addFit=async(source:File|string,x:number,y:number,w:number,h:number)=>{const img=await normalizeImage(source);const scale=Math.min(w/img.width,h/img.height);const iw=img.width*scale,ih=img.height*scale;doc.addImage(img.dataUrl,"PNG",x+(w-iw)/2,y+(h-ih)/2,iw,ih);};
+ const leftW=246,rightX=296,tileW=90,tileH=98;
+ await addFit(views.front,m,68,leftW,270); await addFit(views.back,m,350,leftW,270);
+ doc.setFontSize(10).text("FRONT",m+100,340).text("BACK",m+102,626);
+ for(let i=0;i<PATCHES.length;i++){
+  const p=PATCHES[i];if(!p)continue;const x=rightX+(i%3)*tileW,y=68+Math.floor(i/3)*tileH;
+  doc.setDrawColor(190).rect(x,y,tileW-5,tileH-5);doc.setFontSize(10).text(String(p.number),x+5,y+13);
+  const patch=patches[p.id];if(patch&&!isLocked(p,order.patch4Unlocked))await addFit(patch.file??patch.url,x+7,y+18,tileW-19,55);
+  doc.setFontSize(7).text(p.label,x+5,y+82);
+  if(isLocked(p,order.patch4Unlocked))doc.text("LOCKED",x+20,y+47);
+ }
+ const details=[`NUM: ${order.num}`,`SIZE: ${order.size}`,`NAME: ${order.fullName}`,`PATCH NUM: ${countPatches(values,order.patch4Unlocked)}`,`GRADE: ${order.grade}`];
+ let y=478;for(const detail of details){doc.addImage(await textImage(detail),"PNG",rightX,y,265,22);y+=29;}
+ const notes=order.notes||"—";const noteLines=Array.from(notes.matchAll(/[^\n]{1,32}|\n/g)).map(m=>m[0]);
+ const visibleNotes=noteLines.slice(0,4);for(const [i,line]of visibleNotes.entries()){doc.addImage(await textImage(`${i===0?"NOTE: ":""}${line}`),"PNG",rightX,y,265,22);y+=23;}
+ doc.setFontSize(9).text(`Body: ${options.bodyColor}   Sleeves: ${options.sleeveColor}`,m,H-35);
+ if(noteLines.length>4){doc.addPage();doc.setFontSize(16).text(`ORDER ${order.num} — NOTES`,m,44);let ny=72;for(const line of noteLines){if(ny>H-45){doc.addPage();ny=45;}doc.addImage(await textImage(line),"PNG",m,ny,W-m*2,32);ny+=36;}}
+ for(const p of PATCHES){const patch=patches[p.id];if(!patch||isLocked(p,order.patch4Unlocked))continue;
+  doc.addPage();doc.setFontSize(17).text(`${p.number}. ${p.label}`,m,42);doc.addImage(await textImage(`NUM: ${order.num}     NAME: ${order.fullName}`),"PNG",m,52,W-m*2,35);
+  await addFit(patch.file??patch.url,m,110,W-m*2,H-140);
+ }
+ return doc.output("blob");
 }
