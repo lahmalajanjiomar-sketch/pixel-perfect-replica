@@ -27,9 +27,9 @@ export function isFilled(p: PatchConfig, value: PatchValue | undefined, unlocked
 export const countPatches = (values: Record<string, PatchValue>, unlocked: boolean) => PATCHES.filter((p) => isFilled(p, values[p.id], unlocked)).length;
 export function validateOrder(order: Order, values: Record<string, PatchValue>): Record<string, string> {
   const errors: Record<string, string> = {};
-  if (!["S", "M", "L"].includes(order.size)) errors.size = "Please choose your jacket size.";
-  if (!order.fullName.trim()) errors.fullName = "Please enter your name.";
-  if (!order.grade.trim()) errors.grade = "Please enter your grade, for example 12A.";
+  if (!["S", "M", "L"].includes(order.size)) errors["size"] = "Please choose your jacket size.";
+  if (!order.fullName.trim()) errors["fullName"] = "Please enter your name.";
+  if (!order.grade.trim()) errors["grade"] = "Please enter your grade, for example 12A.";
   for (const p of PATCHES) if (p.required && !isFilled(p, values[p.id], order.patch4Unlocked)) errors[p.id] = p.type === "initials" ? "Please enter exactly two letters." : `Please add your ${p.label.toLowerCase()}.`;
   return errors;
 }

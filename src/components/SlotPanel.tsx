@@ -6,7 +6,7 @@ import { useDesignState } from "@/hooks/useDesignState";
 import { isLocked } from "@/lib/patchRules";
 import { Button } from "@/components/ui/button";
 const names = new Intl.DisplayNames(["en"],{type:"region"});
-const countryList=countries.map(code=>({code,name:names.of(code)??code})).sort((a,b)=>a.name.localeCompare(b.name));
+const countryList=countries.filter(code=>/^[A-Z]{2}$/.test(code)).map(code=>({code,name:names.of(code)??code})).sort((a,b)=>a.name.localeCompare(b.name));
 export function SlotPanel(){
  const {selectedSlot,selectSlot,order,values,patches,setText,setCountry,setPatch,removePatch,arabicDigits,setArabicDigits,errors}=useDesignState();
  const input=useRef<HTMLInputElement>(null); const [search,setSearch]=useState("");const [own,setOwn]=useState(false);
