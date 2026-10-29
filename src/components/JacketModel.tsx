@@ -18,7 +18,8 @@ export function JacketModel() {
   }, []);
   useEffect(() => {
     const c = textTex.image as HTMLCanvasElement;
-    const ctx = c.getContext("2d")!;
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
     ctx.clearRect(0, 0, c.width, c.height);
     ctx.font = "bold 110px Georgia, serif";
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
